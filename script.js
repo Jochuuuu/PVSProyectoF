@@ -1,6 +1,7 @@
-const API_URL = window.location.hostname === 'localhost' 
+// script.js
+const API_URL = window.API_URL || (window.location.hostname === 'localhost' 
     ? 'http://localhost:8000'
-    : 'https://pvsproyectob.onrender.com';
+    : 'https://pvsproyectof.pages.dev');
 
 console.log('script.js cargado a las:', new Date().toISOString());
 let currentTable = null;
