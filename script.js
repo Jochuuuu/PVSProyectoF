@@ -1,5 +1,5 @@
 // script.js
-const API_URL = window.API_URL || (window.location.hostname === 'localhost' 
+const API_BASE_URL = window.API_URL || (window.location.hostname === 'localhost' 
     ? 'http://localhost:8000'
     : 'https://pvsproyectof.pages.dev');
 
