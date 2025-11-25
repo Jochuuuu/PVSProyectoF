@@ -1,5 +1,7 @@
 // auth.js - Sistema de autenticación
-window.API_URL =  'https://pvsproyectob.onrender.com';
+window.API_URL = window.API_URL || (window.location.hostname === 'localhost' 
+    ? 'http://localhost:8000'
+    : 'https://pvsproyectob.onrender.com');
 
 const API_URL = window.API_URL;
 
