@@ -60,11 +60,17 @@ jobs:
         echo "Validando proteccion contra Cross-Site Scripting (XSS)"
         echo "============================================"
         
-        # Validar unsafe-inline
-        if echo "$CSP" | grep -i "script-src" | grep -q "unsafe-inline"; then
+        # Extraer SOLO la directiva script-src (FIX DEL BUG)
+        SCRIPT_SRC=$(echo "$CSP" | grep -o "script-src[^;]*")
+        
+        # Validar unsafe-inline en script-src
+        if echo "$SCRIPT_SRC" | grep -q "unsafe-inline"; then
           echo "FALLO CRITICO: script-src contiene 'unsafe-inline'"
           echo "Vulnerabilidad: Permite inyeccion de scripts arbitrarios"
           echo "Referencia: https://owasp.org/Top10/A03_2021-Injection/"
+          echo ""
+          echo "script-src detectado:"
+          echo "$SCRIPT_SRC"
           exit 1
         fi
         echo "[PASS] script-src no contiene 'unsafe-inline'"
