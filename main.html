@@ -7,7 +7,7 @@
     <title>BData</title>
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' 'unsafe-inline';
+  script-src 'self' 'nonce-RANDOM_VALUE_HERE';
   style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline';
   font-src 'self' https://cdnjs.cloudflare.com;
   connect-src 'self' http://localhost:8000 https://pvsproyectob.onrender.com;
@@ -197,8 +197,8 @@
         </div>
     </div>
 
-    <script src="script.js" ></script>
-<script src="auth.js" ></script>
+    <script nonce="RANDOM_VALUE_HERE" src="script.js"></script>
+<script nonce="RANDOM_VALUE_HERE" src="auth.js"></script>
     
 </body>
 
