@@ -21,7 +21,7 @@ jobs:
         echo "============================================"
         echo ""
         
-        # Buscar archivo HTML (main.html o index.html)
+        # Buscar archivo HTML
         if [ -f "main.html" ]; then
           HTML_FILE="main.html"
         elif [ -f "index.html" ]; then
@@ -33,11 +33,19 @@ jobs:
         
         echo "📄 Analizando: $HTML_FILE"
         
-        # Extraer CSP (maneja múltiples líneas)
-        CSP=$(cat "$HTML_FILE" | tr '\n' ' ' | grep -o 'Content-Security-Policy[^"]*' | head -1)
+        # Extraer el contenido completo del meta tag CSP
+        CSP=$(grep -Pzo '(?s)<meta[^>]*Content-Security-Policy[^>]*content="[^"]*"' "$HTML_FILE" | tr -d '\0' | grep -o 'content="[^"]*"' | sed 's/content="//;s/"$//' | tr '\n' ' ')
         
         if [ -z "$CSP" ]; then
           echo "❌ ERROR: No se encontró Content-Security-Policy en $HTML_FILE"
+          echo "Intentando método alternativo..."
+          
+          # Método alternativo: usar sed
+          CSP=$(sed -n '/<meta.*Content-Security-Policy/,/>/p' "$HTML_FILE" | tr '\n' ' ' | grep -o 'content="[^"]*"' | sed 's/content="//;s/"$//')
+        fi
+        
+        if [ -z "$CSP" ]; then
+          echo "❌ ERROR: No se pudo extraer el CSP"
           exit 1
         fi
         
@@ -75,10 +83,19 @@ jobs:
         # Validar hashes SHA-256
         if echo "$CSP" | grep -q "sha256-"; then
           HASH_COUNT=$(echo "$CSP" | grep -o "sha256-[A-Za-z0-9+/=]*" | wc -l)
-          echo "✅ CSP usa hashes SHA-256 (encontrados: $HASH_COUNT)"
+          echo "✅ CSP usa hashes SHA-256 (encontrados: $HASH_COUNT hashes)"
+          
+          # Mostrar los hashes encontrados
+          echo "   📌 Hashes detectados:"
+          echo "$CSP" | grep -o "sha256-[A-Za-z0-9+/=]*" | while read hash; do
+            echo "      - $hash"
+          done
         else
           echo "❌ ERROR: CSP no usa hashes SHA-256"
           echo "   📌 Debe usar hashes en lugar de 'self' o 'unsafe-inline'"
+          echo ""
+          echo "🔍 Debug - CSP extraído:"
+          echo "$CSP"
           exit 1
         fi
         
