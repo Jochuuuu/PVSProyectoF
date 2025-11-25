@@ -839,3 +839,33 @@ body {
         font-size: 1.5rem;
     }
 }
+
+
+/* ========================================
+   UTILITY CLASSES - Estados de visibilidad
+   ======================================== */
+
+.hidden {
+    display: none !important;
+}
+
+.show {
+    display: block !important;
+}
+
+/* Estado inicial de elementos */
+#registerForm {
+    display: none;
+}
+
+#authLoading {
+    display: none;
+}
+
+#resultsTable {
+    display: none;
+}
+
+#resultsTable.show {
+    display: table !important;
+}

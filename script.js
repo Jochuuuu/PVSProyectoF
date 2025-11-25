@@ -12,13 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function initializeApp() {
-    
     await checkConnection();
-    
     await loadTables();
-    
     setupEventListeners();
-    
 }
 
 async function checkConnection() {
@@ -86,10 +82,9 @@ function displayTables(tables) {
     let html = '';
     for (const [tableName, tableInfo] of Object.entries(tables)) {
         const recordCount = tableInfo.record_count || 0;
-        const primaryKey = tableInfo.primary_key || '';
         
         html += `
-            <div class="table-item" onclick="selectTable('${tableName}')">
+            <div class="table-item" data-table-name="${tableName}">
                 <i class="fas fa-table table-icon"></i>
                 <div class="table-info">
                     <div class="table-name">${tableName}</div>
@@ -100,6 +95,13 @@ function displayTables(tables) {
     }
     
     tablesList.innerHTML = html;
+    
+    // Agregar event listeners a los items de tabla
+    document.querySelectorAll('.table-item').forEach(item => {
+        item.addEventListener('click', function() {
+            selectTable(this.dataset.tableName);
+        });
+    });
 }
 
 function selectTable(tableName) {
@@ -107,7 +109,11 @@ function selectTable(tableName) {
         item.classList.remove('active');
     });
     
-    event.target.closest('.table-item').classList.add('active');
+    const selectedItem = document.querySelector(`[data-table-name="${tableName}"]`);
+    if (selectedItem) {
+        selectedItem.classList.add('active');
+    }
+    
     currentTable = tableName;
     
     const query = `SELECT * FROM ${tableName};`;
@@ -116,33 +122,27 @@ function selectTable(tableName) {
     showToast(`Tabla ${tableName} seleccionada`, 'success');
 }
 
-// Función para obtener el texto seleccionado o todo el contenido
 function getQueryToExecute() {
     const queryInput = document.getElementById('sqlQuery');
     const selectedText = queryInput.value.substring(queryInput.selectionStart, queryInput.selectionEnd);
     
-    // Si hay texto seleccionado, devolver solo eso
     if (selectedText.trim()) {
         return selectedText.trim();
     }
     
-    // Si no hay selección, devolver todo el contenido
     return queryInput.value.trim();
 }
 
-// Función para resaltar temporalmente el texto que se va a ejecutar
 function highlightExecutedQuery(queryToExecute) {
     const queryInput = document.getElementById('sqlQuery');
     const fullText = queryInput.value;
     
     if (queryToExecute === fullText.trim()) {
-        // Si se ejecuta todo, seleccionar todo temporalmente
         queryInput.select();
         setTimeout(() => {
             queryInput.setSelectionRange(queryInput.value.length, queryInput.value.length);
         }, 300);
     } else {
-        // Si se ejecuta una selección, mantener la selección visible por un momento
         const startIndex = fullText.indexOf(queryToExecute);
         if (startIndex !== -1) {
             queryInput.focus();
@@ -162,10 +162,8 @@ async function executeQuery() {
         return;
     }
     
-    // Mostrar qué se va a ejecutar
     highlightExecutedQuery(queryToExecute);
     
-    // Determinar si es una selección o todo el contenido
     const queryInput = document.getElementById('sqlQuery');
     const selectedText = queryInput.value.substring(queryInput.selectionStart, queryInput.selectionEnd);
     const isSelection = selectedText.trim().length > 0;
@@ -217,8 +215,6 @@ async function executeQuery() {
         console.error('Error ejecutando consulta:', error);
     } finally {
         showLoading(false);
-        event?.preventDefault?.();
-        return false;
     }
 }
 
@@ -253,15 +249,14 @@ function displayResults(data, executionTime, executedQuery, wasSelection) {
         }
     }
     
-    // Si hay error, mostrar información de error
     if (hasError) {
         resultsInfo.innerHTML = `
             <span class="record-count">Error${wasSelection ? ' (selección)' : ''}</span>
             <span class="execution-time">${executionTime.toFixed(3)} sec</span>
         `;
         
-        noResults.style.display = 'flex';
-        resultsTable.style.display = 'none';
+        noResults.classList.remove('hidden');
+        resultsTable.classList.add('hidden');
         
         noResults.innerHTML = `
             <i class="fas fa-exclamation-triangle" style="color: var(--error-color);"></i>
@@ -272,7 +267,6 @@ function displayResults(data, executionTime, executedQuery, wasSelection) {
         return;
     }
     
-    // Resto del código existente para casos exitosos...
     const selectionIndicator = wasSelection ? ' (selección)' : '';
     resultsInfo.innerHTML = `
         <span class="record-count">${totalRecords} records${selectionIndicator}</span>
@@ -280,11 +274,11 @@ function displayResults(data, executionTime, executedQuery, wasSelection) {
     `;
     
     if (hasSelectResults) {
-        noResults.style.display = 'none';
-        resultsTable.style.display = 'table';
+        noResults.classList.add('hidden');
+        resultsTable.classList.remove('hidden');
     } else {
-        noResults.style.display = 'flex';
-        resultsTable.style.display = 'none';
+        noResults.classList.remove('hidden');
+        resultsTable.classList.add('hidden');
         
         const operation = data.results[0]?.operation || 'UNKNOWN';
         const message = data.results[0]?.message || 'Operación completada';
@@ -296,8 +290,6 @@ function displayResults(data, executionTime, executedQuery, wasSelection) {
             ${wasSelection ? '<p><em>Ejecutado desde selección</em></p>' : ''}
         `;
     }
-    
-    // Resto del código para explain tab...
 }
 
 function displayTable(records) {
@@ -310,7 +302,6 @@ function displayTable(records) {
         return;
     }
     
-    // Crear headers
     const firstRecord = records[0];
     const headers = Object.keys(firstRecord);
     
@@ -318,15 +309,14 @@ function displayTable(records) {
         `<th>${header}</th>`
     ).join('');
     
-    // Crear filas
-     tableBody.innerHTML = records.map((record, index) => {
+    tableBody.innerHTML = records.map((record, index) => {
         const cells = headers.map(header => {
             let value = record[header];
             
             if (value === null || value === undefined) {
                 value = '<span class="null-value">NULL</span>';
             } else if (typeof value === 'object') {
-                    if (value.type === 'POINT') {
+                if (value.type === 'POINT') {
                     value = `<span class="point-value" title="${value.string_representation}">POINT(${value.x}, ${value.y})</span>`;
                 } else {
                     value = `<span class="object-value">${JSON.stringify(value)}</span>`;
@@ -342,7 +332,6 @@ function displayTable(records) {
     }).join('');
 }
 
-// Mostrar error
 function displayError(errorMessage) {
     const noResults = document.getElementById('noResults');
     const resultsTable = document.getElementById('resultsTable');
@@ -353,8 +342,8 @@ function displayError(errorMessage) {
         <span class="execution-time">Error</span>
     `;
     
-    noResults.style.display = 'flex';
-    resultsTable.style.display = 'none';
+    noResults.classList.remove('hidden');
+    resultsTable.classList.add('hidden');
     
     noResults.innerHTML = `
         <i class="fas fa-exclamation-triangle" style="color: var(--error-color);"></i>
@@ -363,18 +352,21 @@ function displayError(errorMessage) {
     `;
 }
 
-// Manejar tabs
 function showTab(tabName) {
-    // Remover active de todos los tabs
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     
-    // Activar tab seleccionado
-    event.target.classList.add('active');
-    document.getElementById(tabName + 'Tab').classList.add('active');
+    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+    
+    const activeContent = document.getElementById(tabName + 'Tab');
+    if (activeContent) {
+        activeContent.classList.add('active');
+    }
 }
 
-// Limpiar consulta
 function clearQuery() {
     document.getElementById('sqlQuery').value = '';
     document.getElementById('sqlQuery').focus();
@@ -444,9 +436,41 @@ function addToHistory(sql, result) {
 }
 
 function setupEventListeners() {
+    // Botón ejecutar
+    const executeBtn = document.getElementById('executeQueryBtn');
+    if (executeBtn) {
+        executeBtn.addEventListener('click', executeQuery);
+    }
+    
+    // Botón limpiar
+    const clearBtn = document.getElementById('clearQueryBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearQuery);
+    }
+    
+    // Botón refrescar tablas
+    const refreshBtn = document.getElementById('refreshTablesBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadTables);
+    }
+    
+    // Botones de sugerencias
+    document.querySelectorAll('.suggestion-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            insertSuggestion(this.dataset.suggestion);
+        });
+    });
+    
+    // Botones de tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            showTab(this.dataset.tab);
+        });
+    });
+    
+    // Query input - shortcuts
     const queryInput = document.getElementById('sqlQuery');
     
-    // Ejecutar con Ctrl+Enter
     queryInput.addEventListener('keydown', function(e) {
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
@@ -454,7 +478,6 @@ function setupEventListeners() {
         }
     });
     
-    // Ejecutar selección con F5
     document.addEventListener('keydown', function(e) {
         if (e.key === 'F5') {
             e.preventDefault();
@@ -464,24 +487,21 @@ function setupEventListeners() {
         }
     });
     
-    // Mostrar tooltip cuando hay selección
-    queryInput.addEventListener('mouseup', function() {
-        updateExecuteButtonText();
-    });
+    queryInput.addEventListener('mouseup', updateExecuteButtonText);
+    queryInput.addEventListener('keyup', updateExecuteButtonText);
     
-    queryInput.addEventListener('keyup', function() {
-        updateExecuteButtonText();
-    });
-    
-    document.getElementById('toast').addEventListener('click', function() {
-        this.classList.remove('show');
-    });
+    // Toast click
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.addEventListener('click', function() {
+            this.classList.remove('show');
+        });
+    }
 }
 
-// Actualizar texto del botón ejecutar según si hay selección
 function updateExecuteButtonText() {
     const queryInput = document.getElementById('sqlQuery');
-    const executeBtn = document.querySelector('.btn-primary');
+    const executeBtn = document.getElementById('executeQueryBtn');
     const selectedText = queryInput.value.substring(queryInput.selectionStart, queryInput.selectionEnd);
     
     if (selectedText.trim()) {
@@ -493,48 +513,7 @@ function updateExecuteButtonText() {
     }
 }
 
-function insertCreateTable() {
-    const template = `CREATE TABLE NombreTabla (
-    id INT PRIMARY KEY INDEX BTree,
-    nombre VARCHAR[100] INDEX BTree,
-    descripcion VARCHAR[255],
-    fecha_creacion VARCHAR[20]
-);`;
-    document.getElementById('sqlQuery').value = template;
-}
-
-function insertSelect() {
-    if (currentTable) {
-        document.getElementById('sqlQuery').value = `SELECT * FROM ${currentTable};`;
-    } else {
-        document.getElementById('sqlQuery').value = 'SELECT * FROM NombreTabla;';
-    }
-}
-
-function insertInsert() {
-    if (currentTable) {
-        document.getElementById('sqlQuery').value = `INSERT INTO ${currentTable} VALUES ();`;
-    } else {
-        document.getElementById('sqlQuery').value = 'INSERT INTO NombreTabla VALUES ();';
-    }
-}
-
-function insertUpdate() {
-    if (currentTable) {
-        document.getElementById('sqlQuery').value = `UPDATE ${currentTable} SET columna = valor WHERE condicion;`;
-    } else {
-        document.getElementById('sqlQuery').value = 'UPDATE NombreTabla SET columna = valor WHERE condicion;';
-    }
-}
-
-function insertDelete() {
-    if (currentTable) {
-        document.getElementById('sqlQuery').value = `DELETE FROM ${currentTable} WHERE condicion;`;
-    } else {
-        document.getElementById('sqlQuery').value = 'DELETE FROM NombreTabla WHERE condicion;';
-    }
-}
-
+// Exponer funciones necesarias globalmente
 window.executeQuery = executeQuery;
 window.clearQuery = clearQuery;
 window.insertSuggestion = insertSuggestion;
@@ -553,3 +532,5 @@ if (window.location.hostname === 'localhost') {
     };
     console.log('🔧 Debug helpers disponibles en window.debugAPI');
 }
+
+// Cada vez que modifiques script.js o auth.js, ejecutar generate-hashes.js para actualizar los hashes SRI.

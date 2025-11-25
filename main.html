@@ -5,6 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BD2</title>
+    <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self'; 
+    script-src 'sha256-Ai8b19RkDvRBDnUwYUglR/bmoj6LzrMbGu+MMxp52uE=' 'sha256-iodYnyPd7BKHAI0+QCGg04I7E83FM3qPvcqPBENhMyA=';
+    style-src 'self' https://cdnjs.cloudflare.com; 
+    font-src 'self' https://cdnjs.cloudflare.com; 
+    connect-src 'self' https://pvsproyectob.onrender.com; 
+    img-src 'self' data: https:; 
+    frame-ancestors 'none'; 
+    base-uri 'self'; 
+    form-action 'self'
+    ">
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -15,7 +26,7 @@
             <div class="header-content">
                 <h1><i class="fas fa-database"></i> BD2</h1>
                 <div class="header-actions">
-                    <button class="btn btn-secondary" onclick="loadTables()">
+                    <button class="btn btn-secondary" id="refreshTablesBtn">
                         <i class="fas fa-sync-alt"></i> Actualizar
                     </button>
                     <div class="connection-status" id="connectionStatus">
@@ -47,10 +58,10 @@
                     <div class="editor-header">
                         <h3><i class="fas fa-code"></i> SQL Query</h3>
                         <div class="editor-actions">
-                            <button class="btn btn-secondary" onclick="clearQuery()">
+                            <button class="btn btn-secondary" id="clearQueryBtn">
                                 <i class="fas fa-trash"></i> Limpiar
                             </button>
-                            <button type="button" class="btn btn-primary" onclick="executeQuery(); return false;">
+                            <button type="button" class="btn btn-primary" id="executeQueryBtn">
                                 <i class="fas fa-play"></i> Ejecutar
                             </button>
                         </div>
@@ -59,13 +70,8 @@
                         <textarea id="sqlQuery"
                             placeholder="Escribe tu consulta SQL aquí...&#10;&#10;Ejemplos:&#10;CREATE TABLE Productos (id INT PRIMARY KEY INDEX BTree, nombre VARCHAR[50]);&#10;INSERT INTO Productos VALUES (1, 'Laptop');&#10;SELECT * FROM Productos;&#10;IMPORT FROM CSV 'archivo.csv' INTO Productos;"></textarea>
                         <div class="query-suggestions">
-                            <button class="suggestion-btn" onclick="insertSuggestion('CREATE TABLE ')">CREATE
-                                TABLE</button>
-                            <button class="suggestion-btn" onclick="insertSuggestion('SELECT * FROM ')">SELECT
-                                *</button>
-                            <!--  <button class="suggestion-btn" onclick="insertSuggestion('INSERT INTO ')">INSERT INTO</button>
-                            <button class="suggestion-btn" onclick="insertSuggestion('DELETE FROM ')">DELETE FROM</button>
-                            <button class="suggestion-btn" onclick="insertSuggestion('IMPORT FROM CSV ')">IMPORT CSV</button> -->
+                            <button class="suggestion-btn" data-suggestion="CREATE TABLE ">CREATE TABLE</button>
+                            <button class="suggestion-btn" data-suggestion="SELECT * FROM ">SELECT *</button>
                         </div>
                     </div>
                 </section>
@@ -74,10 +80,10 @@
                 <section class="results-section">
                     <div class="results-header">
                         <div class="results-tabs">
-                            <button class="tab-btn active" onclick="showTab('result')">
+                            <button class="tab-btn active" data-tab="result">
                                 <i class="fas fa-table"></i> Result
                             </button>
-                            <button class="tab-btn" onclick="showTab('explain')">
+                            <button class="tab-btn" data-tab="explain">
                                 <i class="fas fa-info-circle"></i> Explain
                             </button>
                         </div>
@@ -95,7 +101,7 @@
                                     <i class="fas fa-database"></i>
                                     <p>Ejecuta una consulta para ver los resultados</p>
                                 </div>
-                                <table class="results-table" id="resultsTable" style="display: none;">
+                                <table class="results-table" id="resultsTable">
                                     <thead id="tableHeaders"></thead>
                                     <tbody id="tableBody"></tbody>
                                 </table>
@@ -130,7 +136,6 @@
         </div>
     </div>
 
-
     <div class="auth-modal" id="authModal">
         <div class="auth-modal-content">
             <div class="auth-header">
@@ -140,16 +145,16 @@
 
             <!-- Tabs para Login/Register -->
             <div class="auth-tabs">
-                <button class="auth-tab active" onclick="showAuthTab('login')">
+                <button class="auth-tab active" data-auth-tab="login">
                     <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
                 </button>
-                <button class="auth-tab" onclick="showAuthTab('register')">
+                <button class="auth-tab" data-auth-tab="register">
                     <i class="fas fa-user-plus"></i> Registrarse
                 </button>
             </div>
 
             <!-- Formulario de Login -->
-            <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+            <form id="loginForm" class="auth-form">
                 <div class="form-group">
                     <label><i class="fas fa-user"></i> Usuario</label>
                     <input type="text" id="loginUser" placeholder="Ingresa tu usuario" required autocomplete="username">
@@ -164,7 +169,7 @@
             </form>
 
             <!-- Formulario de Register -->
-            <form id="registerForm" class="auth-form" style="display: none;" onsubmit="handleRegister(event)">
+            <form id="registerForm" class="auth-form hidden">
                 <div class="form-group">
                     <label><i class="fas fa-user"></i> Usuario</label>
                     <input type="text" id="regUser" placeholder="Elige un usuario" required minlength="3" autocomplete="username">
@@ -185,16 +190,15 @@
             </form>
 
             <!-- Loading indicator dentro del modal -->
-            <div class="auth-loading" id="authLoading" style="display: none;">
+            <div class="auth-loading hidden" id="authLoading">
                 <i class="fas fa-spinner fa-spin"></i>
                 <span>Procesando...</span>
             </div>
         </div>
     </div>
 
-
-    <script src="script.js"></script>
-    <script src="auth.js"></script>
+    <script src="script.js" integrity="sha256-Ai8b19RkDvRBDnUwYUglR/bmoj6LzrMbGu+MMxp52uE="></script>
+    <script src="auth.js" integrity="sha256-iodYnyPd7BKHAI0+QCGg04I7E83FM3qPvcqPBENhMyA="></script>
     
 </body>
 

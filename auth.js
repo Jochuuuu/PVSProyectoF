@@ -4,12 +4,10 @@ window.API_URL = window.API_URL || (window.location.hostname === 'localhost'
     : 'https://pvsproyectob.onrender.com');
 
 const API_URL = window.API_URL;
-// ============================================
-// INICIALIZACIÓN
-// ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
     checkAuthStatus();
+    setupAuthEventListeners();
 });
 
 function checkAuthStatus() {
@@ -24,10 +22,6 @@ function checkAuthStatus() {
     }
 }
 
-// ============================================
-// MOSTRAR/OCULTAR MODAL
-// ============================================
-
 function showAuthModal() {
     document.getElementById('authModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -38,10 +32,6 @@ function hideAuthModal() {
     document.body.style.overflow = 'auto';
 }
 
-// ============================================
-// TABS (LOGIN/REGISTER)
-// ============================================
-
 function showAuthTab(tab) {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
@@ -50,19 +40,15 @@ function showAuthTab(tab) {
     tabs.forEach(t => t.classList.remove('active'));
     
     if (tab === 'login') {
-        loginForm.style.display = 'block';
-        registerForm.style.display = 'none';
-        tabs[0].classList.add('active');
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+        document.querySelector('[data-auth-tab="login"]').classList.add('active');
     } else {
-        loginForm.style.display = 'none';
-        registerForm.style.display = 'block';
-        tabs[1].classList.add('active');
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
+        document.querySelector('[data-auth-tab="register"]').classList.add('active');
     }
 }
-
-// ============================================
-// HANDLE LOGIN
-// ============================================
 
 async function handleLogin(event) {
     event.preventDefault();
@@ -92,7 +78,6 @@ async function handleLogin(event) {
         const data = await response.json();
         
         if (response.ok && data.success) {
-            // Guardar token y usuario
             localStorage.setItem('bd2_token', data.token);
             localStorage.setItem('bd2_user', JSON.stringify(data.user));
             
@@ -101,7 +86,9 @@ async function handleLogin(event) {
             setTimeout(() => {
                 hideAuthModal();
                 displayUserInfo(data.user);
-                loadTables(); // Recargar tablas
+                if (typeof loadTables === 'function') {
+                    loadTables();
+                }
             }, 500);
             
         } else {
@@ -116,10 +103,6 @@ async function handleLogin(event) {
     }
 }
 
-// ============================================
-// HANDLE REGISTER
-// ============================================
-
 async function handleRegister(event) {
     event.preventDefault();
     
@@ -127,7 +110,6 @@ async function handleRegister(event) {
     const password = document.getElementById('regPass').value;
     const passwordConfirm = document.getElementById('regPassConfirm').value;
     
-    // Validaciones
     if (!username || !password || !passwordConfirm) {
         showToast('Por favor completa todos los campos', 'warning');
         return;
@@ -167,15 +149,12 @@ async function handleRegister(event) {
         if (response.ok && data.success) {
             showToast('¡Registro exitoso! Ahora inicia sesión', 'success');
             
-            // Limpiar formulario
             document.getElementById('regUser').value = '';
             document.getElementById('regPass').value = '';
             document.getElementById('regPassConfirm').value = '';
             
-            // Cambiar a tab de login
             setTimeout(() => {
                 showAuthTab('login');
-                // Pre-llenar usuario en login
                 document.getElementById('loginUser').value = username;
                 document.getElementById('loginPass').focus();
             }, 1000);
@@ -192,10 +171,6 @@ async function handleRegister(event) {
     }
 }
 
-// ============================================
-// LOGOUT
-// ============================================
-
 function logout() {
     if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
         localStorage.removeItem('bd2_token');
@@ -209,19 +184,18 @@ function logout() {
     }
 }
 
-// ============================================
-// UI HELPERS
-// ============================================
-
 function showAuthLoading(show) {
     const loading = document.getElementById('authLoading');
-    loading.style.display = show ? 'flex' : 'none';
+    if (show) {
+        loading.classList.remove('hidden');
+    } else {
+        loading.classList.add('hidden');
+    }
 }
 
 function displayUserInfo(user) {
     const headerActions = document.querySelector('.header-actions');
     
-    // Verificar si ya existe el user-info
     let userInfo = document.querySelector('.user-info');
     
     if (!userInfo) {
@@ -239,18 +213,34 @@ function displayUserInfo(user) {
         logoutBtn.className = 'btn btn-secondary logout-btn';
         logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i>';
         logoutBtn.title = 'Cerrar sesión';
-        logoutBtn.onclick = logout;
+        logoutBtn.addEventListener('click', logout);
         
         userInfo.appendChild(avatar);
         userInfo.appendChild(username);
         userInfo.appendChild(logoutBtn);
         
-        // Insertar antes del botón de actualizar
         headerActions.insertBefore(userInfo, headerActions.firstChild);
     }
 }
 
-// Hacer funciones globales
+function setupAuthEventListeners() {
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            showAuthTab(this.dataset.authTab);
+        });
+    });
+    
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+    
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+    }
+}
+
 window.showAuthTab = showAuthTab;
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
