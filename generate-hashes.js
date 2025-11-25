@@ -1,46 +1,16 @@
-const fs = require('fs');
+// generate-hashes.js
 const crypto = require('crypto');
+const fs = require('fs');
 
-function generateHash(filename) {
-    const content = fs.readFileSync(filename, 'utf8');
-    const hash = crypto.createHash('sha256').update(content, 'utf8').digest('base64');
-    return `sha256-${hash}`;
-}
+const files = ['script.js', 'auth.js'];
 
-console.log('🔐 Generando hashes...\n');
+console.log('\n📝 Hashes para tu CSP:\n');
+console.log('script-src \'self\'');
 
-// Generar hashes
-const scriptHash = generateHash('script.js');
-const authHash = generateHash('auth.js');
+files.forEach(file => {
+    const content = fs.readFileSync(file, 'utf8');
+    const hash = crypto.createHash('sha256').update(content).digest('base64');
+    console.log(`  'sha256-${hash}'`);
+});
 
-console.log('Hashes generados:');
-console.log(`script.js: ${scriptHash}`);
-console.log(`auth.js: ${authHash}\n`);
-
-// Leer el HTML
-let html = fs.readFileSync('main.html', 'utf8');
-
-// Reemplazar hashes en CSP (dentro del meta tag)
-html = html.replace(
-    /script-src 'sha256-[A-Za-z0-9+/=]+' 'sha256-[A-Za-z0-9+/=]+'/,
-    `script-src '${scriptHash}' '${authHash}'`
-);
-
-// Reemplazar integrity en script.js
-html = html.replace(
-    /<script src="script\.js" integrity="sha256-[A-Za-z0-9+/=]+"/,
-    `<script src="script.js" integrity="${scriptHash}"`
-);
-
-// Reemplazar integrity en auth.js  
-html = html.replace(
-    /<script src="auth\.js" integrity="sha256-[A-Za-z0-9+/=]+"/,
-    `<script src="auth.js" integrity="${authHash}"`
-);
-
-// Guardar
-fs.writeFileSync('main.html', html);
-
-console.log('✅ main.html actualizado correctamente\n');
-console.log('📋 Nuevo CSP:');
-console.log(`script-src '${scriptHash}' '${authHash}'`);
+console.log(';\n');
