@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout código
+    - name: Checkout código
       uses: actions/checkout@v4
     
-    - name: 📋 Extraer y validar CSP
+    - name: Validación de Content Security Policy
       run: |
         echo "============================================"
-        echo "🚀 VALIDACIÓN LOCAL OWASP CSP"
+        echo "VALIDACION OWASP - CONTENT SECURITY POLICY"
         echo "============================================"
         echo ""
         
@@ -27,74 +27,71 @@ jobs:
         elif [ -f "index.html" ]; then
           HTML_FILE="index.html"
         else
-          echo "❌ ERROR: No se encontró main.html ni index.html"
+          echo "ERROR: No se encontro main.html ni index.html"
           exit 1
         fi
         
-        echo "📄 Analizando: $HTML_FILE"
+        echo "Analizando archivo: $HTML_FILE"
         
-        # Extraer el contenido completo del meta tag CSP
+        # Extraer CSP del meta tag
         CSP=$(grep -Pzo '(?s)<meta[^>]*Content-Security-Policy[^>]*content="[^"]*"' "$HTML_FILE" | tr -d '\0' | grep -o 'content="[^"]*"' | sed 's/content="//;s/"$//' | tr '\n' ' ')
         
         if [ -z "$CSP" ]; then
-          echo "❌ ERROR: No se encontró Content-Security-Policy en $HTML_FILE"
-          echo "Intentando método alternativo..."
-          
-          # Método alternativo: usar sed
+          echo "No se encontro Content-Security-Policy, intentando metodo alternativo..."
           CSP=$(sed -n '/<meta.*Content-Security-Policy/,/>/p' "$HTML_FILE" | tr '\n' ' ' | grep -o 'content="[^"]*"' | sed 's/content="//;s/"$//')
         fi
         
         if [ -z "$CSP" ]; then
-          echo "❌ ERROR: No se pudo extraer el CSP"
+          echo "ERROR: No se pudo extraer el CSP del documento"
           exit 1
         fi
         
-        echo "✅ CSP encontrado"
+        echo "Content Security Policy encontrado correctamente"
         echo ""
-        echo "📋 Tu CSP actual:"
+        echo "CSP configurado:"
         echo "$CSP" | fold -w 80
-        echo ""
         echo ""
         
         # ============================================
         # OWASP A03:2021 - Injection (XSS)
         # ============================================
         echo "============================================"
-        echo "🛡️  OWASP Top 10 - A03:2021 Injection (XSS)"
+        echo "OWASP A03:2021 - Injection"
+        echo "Validando proteccion contra Cross-Site Scripting (XSS)"
         echo "============================================"
         
-        # Validar unsafe-inline en script-src
+        # Validar unsafe-inline
         if echo "$CSP" | grep -i "script-src" | grep -q "unsafe-inline"; then
-          echo "❌ CRÍTICO: script-src contiene 'unsafe-inline'"
-          echo "   📌 Vulnerabilidad: Permite inyección de scripts (XSS)"
-          echo "   🔗 OWASP: https://owasp.org/Top10/A03_2021-Injection/"
+          echo "FALLO CRITICO: script-src contiene 'unsafe-inline'"
+          echo "Vulnerabilidad: Permite inyeccion de scripts arbitrarios"
+          echo "Referencia: https://owasp.org/Top10/A03_2021-Injection/"
           exit 1
         fi
-        echo "✅ script-src NO tiene 'unsafe-inline'"
+        echo "[PASS] script-src no contiene 'unsafe-inline'"
         
         # Validar unsafe-eval
         if echo "$CSP" | grep -q "unsafe-eval"; then
-          echo "❌ CRÍTICO: CSP contiene 'unsafe-eval'"
-          echo "   📌 Vulnerabilidad: Permite eval() (XSS)"
+          echo "FALLO CRITICO: CSP contiene 'unsafe-eval'"
+          echo "Vulnerabilidad: Permite ejecucion dinamica de codigo"
           exit 1
         fi
-        echo "✅ CSP NO tiene 'unsafe-eval'"
+        echo "[PASS] CSP no contiene 'unsafe-eval'"
         
         # Validar hashes SHA-256
         if echo "$CSP" | grep -q "sha256-"; then
           HASH_COUNT=$(echo "$CSP" | grep -o "sha256-[A-Za-z0-9+/=]*" | wc -l)
-          echo "✅ CSP usa hashes SHA-256 (encontrados: $HASH_COUNT hashes)"
-          
-          # Mostrar los hashes encontrados
-          echo "   📌 Hashes detectados:"
+          echo "[PASS] CSP implementa integridad con hashes SHA-256"
+          echo "       Total de hashes encontrados: $HASH_COUNT"
+          echo ""
+          echo "       Hashes configurados:"
           echo "$CSP" | grep -o "sha256-[A-Za-z0-9+/=]*" | while read hash; do
-            echo "      - $hash"
+            echo "       * $hash"
           done
         else
-          echo "❌ ERROR: CSP no usa hashes SHA-256"
-          echo "   📌 Debe usar hashes en lugar de 'self' o 'unsafe-inline'"
+          echo "FALLO: CSP no implementa hashes SHA-256"
+          echo "Requerimiento: Usar hashes en lugar de 'self' o 'unsafe-inline'"
           echo ""
-          echo "🔍 Debug - CSP extraído:"
+          echo "CSP actual:"
           echo "$CSP"
           exit 1
         fi
@@ -105,18 +102,19 @@ jobs:
         # OWASP A04:2021 - Insecure Design
         # ============================================
         echo "============================================"
-        echo "🛡️  OWASP Top 10 - A04:2021 Insecure Design"
+        echo "OWASP A04:2021 - Insecure Design"
+        echo "Validando proteccion contra Clickjacking"
         echo "============================================"
         
         if echo "$CSP" | grep -q "frame-ancestors.*'none'"; then
-          echo "✅ frame-ancestors 'none' configurado"
-          echo "   📌 Protección contra Clickjacking activa"
+          echo "[PASS] frame-ancestors configurado como 'none'"
+          echo "       Proteccion contra Clickjacking activa"
         elif echo "$CSP" | grep -q "frame-ancestors.*'self'"; then
-          echo "⚠️  WARNING: frame-ancestors solo permite 'self'"
-          echo "   💡 Recomendación: usar 'none' para máxima seguridad"
+          echo "[WARN] frame-ancestors configurado como 'self'"
+          echo "       Recomendacion: usar 'none' para maxima seguridad"
         else
-          echo "❌ ERROR: frame-ancestors no está configurado"
-          echo "   📌 Vulnerable a ataques de Clickjacking"
+          echo "FALLO: frame-ancestors no esta configurado"
+          echo "Vulnerabilidad: Susceptible a ataques de Clickjacking"
           exit 1
         fi
         
@@ -126,39 +124,42 @@ jobs:
         # OWASP A05:2021 - Security Misconfiguration
         # ============================================
         echo "============================================"
-        echo "🛡️  OWASP Top 10 - A05:2021 Security Misconfiguration"
+        echo "OWASP A05:2021 - Security Misconfiguration"
+        echo "Validando configuracion segura del CSP"
         echo "============================================"
         
         # Validar default-src
         if echo "$CSP" | grep -q "default-src.*'self'"; then
-          echo "✅ default-src 'self' configurado (restrictivo)"
+          echo "[PASS] default-src configurado de forma restrictiva ('self')"
         else
-          echo "⚠️  WARNING: default-src debería ser 'self'"
+          echo "[WARN] default-src deberia estar configurado como 'self'"
         fi
         
         # Validar base-uri
         if echo "$CSP" | grep -q "base-uri"; then
-          echo "✅ base-uri configurado"
+          echo "[PASS] base-uri esta configurado"
         else
-          echo "⚠️  WARNING: base-uri no configurado (recomendado: 'self')"
+          echo "[WARN] base-uri no configurado (recomendado: 'self')"
         fi
         
         # Validar form-action
         if echo "$CSP" | grep -q "form-action"; then
-          echo "✅ form-action configurado"
+          echo "[PASS] form-action esta configurado"
         else
-          echo "⚠️  WARNING: form-action no configurado (recomendado: 'self')"
+          echo "[WARN] form-action no configurado (recomendado: 'self')"
         fi
         
         echo ""
         echo "================================================"
-        echo "🎉 VALIDACIÓN OWASP CSP COMPLETADA EXITOSAMENTE"
+        echo "RESULTADO: VALIDACION COMPLETADA EXITOSAMENTE"
         echo "================================================"
         echo ""
-        echo "✅ A03:2021 - Injection (XSS)           : PROTEGIDO"
-        echo "✅ A04:2021 - Insecure Design          : PROTEGIDO"  
-        echo "✅ A05:2021 - Security Misconfiguration: PROTEGIDO"
+        echo "Resumen de cumplimiento OWASP Top 10 2021:"
         echo ""
-        echo "🔒 Tu aplicación cumple con OWASP Top 10 2021"
-        echo "🏆 CSP Nivel: MÁXIMO"
+        echo "  [PASS] A03:2021 - Injection (XSS)"
+        echo "  [PASS] A04:2021 - Insecure Design (Clickjacking)"  
+        echo "  [PASS] A05:2021 - Security Misconfiguration"
+        echo ""
+        echo "Estado: APROBADO"
+        echo "Nivel de seguridad CSP: MAXIMO"
         echo ""
