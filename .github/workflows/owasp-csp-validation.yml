@@ -16,6 +16,10 @@ jobs:
     
     - name: Validación de Content Security Policy
       run: |
+        # Redirigir toda la salida a un archivo
+        exec > >(tee csp-validation-report.txt)
+        exec 2>&1
+        
         echo "============================================"
         echo "VALIDACION OWASP - CONTENT SECURITY POLICY"
         echo "============================================"
@@ -60,7 +64,7 @@ jobs:
         echo "Validando proteccion contra Cross-Site Scripting (XSS)"
         echo "============================================"
         
-        # Extraer SOLO la directiva script-src (FIX DEL BUG)
+        # Extraer SOLO la directiva script-src
         SCRIPT_SRC=$(echo "$CSP" | grep -o "script-src[^;]*")
         
         # Validar unsafe-inline en script-src
@@ -169,3 +173,13 @@ jobs:
         echo "Estado: APROBADO"
         echo "Nivel de seguridad CSP: MAXIMO"
         echo ""
+        echo "============================================"
+        echo "Reporte generado: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+        echo "============================================"
+    
+    - name: Upload CSP Validation Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: csp-validation-report
+        path: csp-validation-report.txt
